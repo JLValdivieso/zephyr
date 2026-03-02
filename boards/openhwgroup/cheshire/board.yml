@@ -6,3 +6,5 @@ board:
   vendor: ethz
   socs:
     - name: cv64a6_imafdc
+      variants:
+        - name: s_mode

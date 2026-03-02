@@ -109,11 +109,11 @@ GEN_OFFSET_STRUCT(arch_esf, a6);
 GEN_OFFSET_STRUCT(arch_esf, a7);
 #endif /* !CONFIG_RISCV_ISA_RV32E */
 
-GEN_OFFSET_STRUCT(arch_esf, mepc);
-GEN_OFFSET_STRUCT(arch_esf, mstatus);
+GEN_OFFSET_STRUCT(arch_esf, xepc);
+GEN_OFFSET_STRUCT(arch_esf, xstatus);
 
 #ifdef CONFIG_CLIC_SUPPORT_INTERRUPT_LEVEL
-GEN_OFFSET_STRUCT(arch_esf, mcause);
+GEN_OFFSET_STRUCT(arch_esf, mcause); // Is it neccesary to change the name to xcause?
 #endif /* CONFIG_CLIC_SUPPORT_INTERRUPT_LEVEL */
 
 GEN_OFFSET_STRUCT(arch_esf, s0);

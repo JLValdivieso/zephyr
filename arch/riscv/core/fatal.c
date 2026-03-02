@@ -81,19 +81,27 @@ FUNC_NORETURN void z_riscv_fatal_error(unsigned int reason,
 				       const struct arch_esf *esf)
 {
 	__maybe_unused _callee_saved_t *csf = NULL;
-	unsigned long mcause;
+	unsigned long cause;
 
-	__asm__ volatile("csrr %0, mcause" : "=r" (mcause));
+	cause = csr_read(xcause);
 
-	mcause &= CONFIG_RISCV_MCAUSE_EXCEPTION_MASK;
-	EXCEPTION_DUMP("");
-	EXCEPTION_DUMP(" mcause: %ld, %s", mcause, z_riscv_mcause_str(mcause));
+	cause &= CONFIG_RISCV_MCAUSE_EXCEPTION_MASK;
+
+#ifdef CONFIG_RISCV_S_MODE
+	EXCEPTION_DUMP(" scause: %ld, %s", cause, z_riscv_mcause_str(cause));
+#else
+	EXCEPTION_DUMP(" mcause: %ld, %s", cause, z_riscv_mcause_str(cause));
+#endif
 
 #ifndef CONFIG_SOC_OPENISA_RV32M1
-	unsigned long mtval;
+	unsigned long tval;
 
-	__asm__ volatile("csrr %0, mtval" : "=r" (mtval));
-	EXCEPTION_DUMP("  mtval: %lx", mtval);
+	tval = csr_read(xtval);
+	#ifdef CONFIG_RISCV_S_MODE
+		EXCEPTION_DUMP("  stval: %lx", tval);
+	#else
+		EXCEPTION_DUMP("  mtval: %lx", tval);
+	#endif
 #endif /* CONFIG_SOC_OPENISA_RV32M1 */
 
 #ifdef CONFIG_EXCEPTION_DEBUG
@@ -114,8 +122,15 @@ FUNC_NORETURN void z_riscv_fatal_error(unsigned int reason,
 #endif /* CONFIG_RISCV_ISA_RV32E */
 		EXCEPTION_DUMP("     sp: " PR_REG, z_riscv_get_sp_before_exc(esf));
 		EXCEPTION_DUMP("     ra: " PR_REG, esf->ra);
-		EXCEPTION_DUMP("   mepc: " PR_REG, esf->mepc);
-		EXCEPTION_DUMP("mstatus: " PR_REG, esf->mstatus);
+		EXCEPTION_DUMP("   mepc: " PR_REG, esf->xepc);
+		EXCEPTION_DUMP("mstatus: " PR_REG, esf->xstatus);
+		#if defined(CONFIG_RISCV_S_MODE)
+		EXCEPTION_DUMP("   sepc: " PR_REG, esf->xepc);
+		EXCEPTION_DUMP("sstatus: " PR_REG, esf->xstatus);
+#else
+		EXCEPTION_DUMP("   mepc: " PR_REG, esf->xepc);
+		EXCEPTION_DUMP("mstatus: " PR_REG, esf->xstatus);
+#endif
 		EXCEPTION_DUMP("");
 
 		csf = esf->csf;

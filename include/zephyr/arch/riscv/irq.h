@@ -26,6 +26,8 @@ extern "C" {
 #include <stdbool.h>
 #endif /* !_ASMLANGUAGE */
 
+#include "csr.h"
+
 /* Exceptions 0-15 (MCAUSE interrupt=0) */
 
 /* Environment Call from U-mode */
@@ -33,12 +35,31 @@ extern "C" {
 /** Environment Call from M-mode */
 #define RISCV_EXC_ECALLM 11
 
+/** Environment Call from S-mode */
+#define RISCV_EXC_ECALLS 9
+
 /* IRQs 0-15 (MCAUSE interrupt=1) */
 
 /** Machine Software Interrupt */
 #define RISCV_IRQ_MSOFT 3
 /** Machine External Interrupt */
 #define RISCV_IRQ_MEXT  11
+
+/** Supervisor Software Interrupt */
+#define RISCV_IRQ_SSOFT 1
+/** Supervisor External Interrupt */
+#define RISCV_IRQ_SEXT  9
+
+#ifdef CONFIG_RISCV_S_MODE
+#define RISCV_IRQ_SOFT		RISCV_IRQ_SSOFT
+#define RISCV_IRQ_EXT		RISCV_IRQ_SEXT
+#define  RISCV_EXC_ECALL	RISCV_EXC_ECALLS
+#else
+#define RISCV_IRQ_SOFT		RISCV_IRQ_MSOFT
+#define RISCV_IRQ_EXT		RISCV_IRQ_MEXT
+#define  RISCV_EXC_ECALL	RISCV_EXC_ECALLM
+#endif
+
 
 #ifdef CONFIG_64BIT
 #define RISCV_MCAUSE_IRQ_POS          63U
@@ -109,19 +130,19 @@ static inline void arch_isr_direct_header(void)
 	++(arch_curr_cpu()->nested);
 }
 
-extern void __soc_handle_irq(unsigned long mcause);
+extern void __soc_handle_irq(unsigned long cause);
 
 static inline void arch_isr_direct_footer(int swap)
 {
 	ARG_UNUSED(swap);
-	unsigned long mcause;
+	unsigned long cause;
 
 	/* Get the IRQ number */
-	__asm__ volatile("csrr %0, mcause" : "=r" (mcause));
-	mcause &= CONFIG_RISCV_MCAUSE_EXCEPTION_MASK;
+	cause = csr_read(xcause);
+	cause &= CONFIG_RISCV_MCAUSE_EXCEPTION_MASK;
 
 	/* Clear the pending IRQ */
-	__soc_handle_irq(mcause);
+	__soc_handle_irq(cause);
 
 	/* We are not in the ISR anymore */
 	--(arch_curr_cpu()->nested);
