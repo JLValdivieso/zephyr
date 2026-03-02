@@ -1,0 +1,4 @@
+# Copyright 2024 ETH Zurich
+# SPDX-License-Identifier: Apache-2.0
+config BOARD_CHESHIRE
+	select SOC_CV64A6_IMAFDC

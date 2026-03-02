@@ -1,0 +1,119 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright 2024 ETH Zurich and University of Bologna
+ */
+
+#include <freq.h>
+
+/*
+ * Cheshire SoC: Single-core RV64IMAFDC, SV39 MMU
+ */
+/ {
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	clocks {
+		clk_cpu {
+			#clock-cells = <0x00>;
+			clock-frequency = <DT_FREQ_M(50)>;
+			compatible = "fixed-clock";
+		};
+
+		clk_bus: clk_bus_0 {
+			#clock-cells = <0x00>;
+			clock-frequency = <DT_FREQ_M(50)>;
+			compatible = "fixed-clock";
+		};
+	};
+
+	cpus_0: cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu_0: cpu@0 {
+			clock-frequency = <DT_FREQ_M(50)>;
+			timebase-frequency = <DT_FREQ_M(1)>;
+			device_type = "cpu";
+			compatible = "openhwgroup,cva6";
+			riscv,isa = "rv64imafdc";
+			mmu-type = "riscv,sv39";
+			reg = <0>;
+
+			status = "okay";
+
+			hlic: interrupt-controller {
+				#interrupt-cells = <0x01>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+				status = "okay";
+			};
+		};
+	};
+
+	soc {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		memory0: memory@80200000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x8000000>;
+		status = "okay";
+		};
+
+
+		uart0: serial@3002000 {
+			clock-frequency = <50000000>;
+			clocks = <&clk_bus>;
+			compatible = "ns16550";
+			current-speed = <115200>;
+			device_type = "serial";
+			reg = <0x0 0x3002000 0x0 0x1000>;
+			reg-shift = <0x02>;
+			parity = "none";
+			stop-bits = "1";
+			data-bits = <8>;
+			interrupt-parent = <&plic>;
+			interrupts = <1 0x04>;
+			status = "okay";
+		};
+
+		clint: clint@2040000 {
+			compatible = "sifive,clint0";
+			reg = <0x0 0x2040000 0x0 0x40000>;
+			interrupts-extended = <&hlic 3 &hlic 7>;
+			status = "okay";
+		};
+
+		mtimer: timer@204bff8 {
+		compatible = "riscv,machine-timer";
+		reg = <0x0 0x204bff8 0x0 0x8>, <0x0 0x2044000 0x0 0x8>;
+		reg-names = "mtime", "mtimecmp";
+		interrupts-extended = <&hlic 7>;
+		status = "okay";
+		};
+
+
+		plic: interrupt-controller@4000000 {
+			compatible = "sifive,plic-1.0.0";
+			#address-cells = <0>;
+			#interrupt-cells = <2>;
+			interrupt-controller;
+			interrupts-extended = <&hlic 11 &hlic 9>;
+			reg = <0x0 0x4000000 0x0 0x4000000>;
+			riscv,max-priority = <7>;
+			riscv,ndev = <59>;
+			status = "okay";
+		};
+
+		eth: ethernet@3010000 {
+			compatible = "lowrisc-eth";
+			device_type = "network";
+			reg = <0x0 0x3010000 0x0 0x10000>;
+			interrupt-parent = <&plic>;
+			interrupts = <58 4>;
+			local-mac-address = [00 18 3e 02 e3 7f];
+			status = "okay";
+		};
+	};
+};

@@ -1,0 +1,8 @@
+# Copyright 2024 CISPA Helmholtz Center for Information Security gGmbH
+# SPDX-License-Identifier: Apache-2.0
+board:
+  name: cheshire
+  full_name: ETH Cheshire RISC-V SoC
+  vendor: ethz
+  socs:
+    - name: cv64a6_imafdc

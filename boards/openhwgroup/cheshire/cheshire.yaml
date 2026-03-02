@@ -1,0 +1,12 @@
+identifier: cheshire
+name: ETH Zurich Cheshire RISC-V SoC
+type: mcu
+arch: riscv
+ram: 134217728
+toolchain:
+  - zephyr
+supported:
+  - gpio
+  - uart
+  - spi
+vendor: ETH Zurich
