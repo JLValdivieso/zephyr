@@ -129,7 +129,7 @@
 		 * Only on OpenHW Group board.
 		 */
 		eth: lowrisc-eth@30000000 {
-			compatible = "lowrisc-eth";
+			compatible = "lowrisc,eth";
 			device_type = "network";
 			interrupt-parent = <&plic>;
 			interrupts = <3 0>;

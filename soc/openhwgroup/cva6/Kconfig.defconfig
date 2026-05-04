@@ -12,19 +12,19 @@ config RISCV_SOC_INTERRUPT_INIT
 
 # highest implemented first-level interrupt is machine external, 11
 config 2ND_LVL_ISR_TBL_OFFSET
-	default 12
+	default 10
 
 config 2ND_LVL_INTR_00_OFFSET
-	default 11
+	default 9
 
 # 12 first level, 30 second level
 config MAX_IRQ_PER_AGGREGATOR
-	default 30
+	default 62
 
 # one 2nd level aggregator (PLIC) with 30 interrupts
 # offset of 12
 config NUM_IRQS
-	default 42
+	default 74
 
 config MULTI_LEVEL_INTERRUPTS
 	default y

@@ -137,14 +137,14 @@ static inline uint32_t get_plic_enabled_size(const struct device *dev)
 
 static ALWAYS_INLINE uint32_t get_hart_context(const struct device *dev, uint32_t hartid)
 {
-	const struct plic_config *config = dev->config;
-
-	return config->hart_context[hartid];
-	// #if CONFIG_RISCV_S_MODE
-	// return hartid == 0 ? 0 : (hartid * 2);
-	// #else
-	// 	return hartid == 0 ? 0 : (hartid * 2) - 1;
-	// #endif
+        const struct plic_config *config = dev->config;
+        (void)config; /* suppress unused warning */
+#if defined(CONFIG_RISCV_S_MODE)
+        /* S-mode contexts: hart0=1, hart1=3, hart2=5, ... */
+        return (hartid * 2) + 1;
+#else
+        return config->hart_context[hartid];
+#endif
 }
 
 static ALWAYS_INLINE uint32_t get_irq_cpumask(const struct device *dev, uint32_t local_irq)
