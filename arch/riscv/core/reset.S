@@ -89,6 +89,12 @@ aa_loop:
 	call _WdogInit
 #endif
 
+	/* Initialize sscratch with &_kernel.cpus[0] for arch_curr_cpu().
+	* This is needed when running under a hypervisor (e.g. Bao) that
+	* initializes vsscratch to 0. Secondary cores do this in smp.c.
+	*/
+	la t0, _kernel
+	csrw xscratch, t0
 	/*
 	 * Jump into C domain. z_prep_c zeroes BSS, copies rw data into RAM,
 	 * and then enters kernel z_cstart
