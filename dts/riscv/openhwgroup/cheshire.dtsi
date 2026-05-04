@@ -55,10 +55,10 @@
 		#size-cells = <2>;
 		ranges;
 
-		memory0: memory@80200000 {
-		device_type = "memory";
-		reg = <0x0 0x80200000 0x0 0x8000000>;
-		status = "okay";
+		memory0: memory@80000000 {
+			device_type = "memory";
+			reg = <0x80000000 0x40000000>;
+			status = "okay";
 		};
 
 
@@ -102,12 +102,12 @@
 			interrupts-extended = <&hlic 9 &hlic 11>;
 			reg = <0x0 0x4000000 0x0 0x4000000>;
 			riscv,max-priority = <7>;
-			riscv,ndev = <59>;
+			riscv,ndev = <62>;
 			status = "okay";
 		};
 
 		eth: ethernet@3010000 {
-			compatible = "lowrisc-eth";
+			compatible = "lowrisc,eth";
 			device_type = "network";
 			reg = <0x0 0x3010000 0x0 0x10000>;
 			interrupt-parent = <&plic>;

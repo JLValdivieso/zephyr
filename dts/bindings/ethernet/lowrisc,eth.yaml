@@ -1,0 +1,43 @@
+# Copyright (c) 2024 ETH Zurich and University of Bologna
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  LowRISC 100MHz Ethernet MAC controller.
+
+  This is a simple memory-mapped Ethernet controller with:
+    - TX buffer at offset 0x1000
+    - RX buffers (8 slots) at offset 0x4000
+    - 64-bit register access
+    - MDIO bitbang PHY interface
+    - Single RX interrupt
+
+  Commonly used on Cheshire and other PULP-based RISC-V SoCs.
+
+  Example devicetree node:
+
+    eth: ethernet@3010000 {
+        compatible = "lowrisc,eth";
+        reg = <0x0 0x3010000 0x0 0x10000>;
+        interrupt-parent = <&plic>;
+        interrupts = <58 4>;
+        local-mac-address = [00 18 3e 02 e3 7f];
+        status = "okay";
+    };
+
+compatible: "lowrisc,eth"
+
+include: [base.yaml, ethernet-controller.yaml]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  local-mac-address:
+    type: uint8-array
+    description: |
+      The 6-byte MAC address assigned to this interface.
+      If not specified, the driver will attempt to read
+      the MAC address programmed by the bootloader.

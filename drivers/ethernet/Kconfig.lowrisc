@@ -1,0 +1,32 @@
+# LowRISC Ethernet driver configuration
+
+# Copyright (c) 2024 ETH Zurich and University of Bologna
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig ETH_LOWRISC
+	bool "LowRISC 100MHz Ethernet driver"
+	default y
+	depends on DT_HAS_LOWRISC_ETH_ENABLED
+	depends on NET_L2_ETHERNET
+	help
+	  Enable the LowRISC 100MHz Ethernet MAC driver.
+	  This IP core uses memory-mapped TX/RX buffers and MDIO
+	  bitbang for PHY management. Commonly found on Cheshire
+	  and other PULP-based RISC-V platforms.
+
+if ETH_LOWRISC
+
+config ETH_LOWRISC_RX_THREAD_STACK_SIZE
+	int "RX thread stack size"
+	default 2048
+	help
+	  Stack size for the Ethernet RX processing thread.
+
+config ETH_LOWRISC_RX_THREAD_PRIORITY
+	int "RX thread priority"
+	default 2
+	help
+	  Priority for the Ethernet RX processing thread.
+	  Lower numbers are higher priority.
+
+endif # ETH_LOWRISC
