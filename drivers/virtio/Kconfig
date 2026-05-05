@@ -25,5 +25,12 @@ config VIRTIO_MMIO
 	depends on DT_HAS_VIRTIO_MMIO_ENABLED
 	help
 	  Enable options for VIRTIO over MMIO
+config VIRTIO_SHM_ALLOC
+    bool "Use shared memory allocator for virtio buffers"
+    default n
+    help
+      Use a bump allocator over a reserved shared memory region
+      for virtio queue and data buffers. Required when running
+      as a frontend VM under Bao hypervisor with remoteio.
 
 endif # VIRTIO

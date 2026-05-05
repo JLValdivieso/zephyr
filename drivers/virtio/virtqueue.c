@@ -11,6 +11,9 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/barrier.h>
 #include <errno.h>
+#ifdef CONFIG_VIRTIO_SHM_ALLOC
+#include "virtio_shm_alloc.h"
+#endif
 
 LOG_MODULE_REGISTER(virtio, CONFIG_VIRTIO_LOG_LEVEL);
 
@@ -43,8 +46,11 @@ int virtq_create(struct virtq *v, size_t size)
 	size_t shared_size =
 		descriptor_table_size + available_ring_size + used_ring_pad + used_ring_size;
 	size_t v_size = shared_size + sizeof(struct virtq_receive_callback_entry) * size;
-
-	uint8_t *v_area = k_aligned_alloc(16, v_size);
+	#ifdef CONFIG_VIRTIO_SHM_ALLOC
+    	uint8_t *v_area = virtio_shm_alloc(v_size, 16);
+	#else
+		uint8_t *v_area = k_aligned_alloc(16, v_size);
+	#endif
 
 	if (!v_area) {
 		LOG_ERR("unable to allocate virtqueue");
@@ -78,7 +84,11 @@ int virtq_create(struct virtq *v, size_t size)
 
 void virtq_free(struct virtq *v)
 {
-	k_free(v->desc);
+	#ifdef CONFIG_VIRTIO_SHM_ALLOC
+		virtio_shm_free(v->desc);
+	#else
+		k_free(v->desc);
+	#endif
 	k_stack_cleanup(&v->free_desc_stack);
 }
 
@@ -135,7 +145,11 @@ int virtq_add_buffer_chain(
 		if (head == VIRTQ_DESC_NEXT_SENTINEL) {
 			head = desc;
 		}
-		v->desc[desc_le].addr = k_mem_phys_addr(bufs[buf_n].addr);
+		#ifdef CONFIG_VIRTIO_SHM_ALLOC
+			v->desc[desc_le].addr = (uintptr_t)bufs[buf_n].addr;
+		#else
+			v->desc[desc_le].addr = k_mem_phys_addr(bufs[buf_n].addr);
+		#endif
 		v->desc[desc_le].len = bufs[buf_n].len;
 		if (buf_n < device_readable_count) {
 			v->desc[desc_le].flags = 0;

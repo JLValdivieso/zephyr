@@ -13,6 +13,9 @@
 #include <zephyr/sys/atomic.h>
 #include <zephyr/random/random.h>
 #include "eth.h"
+#ifdef CONFIG_VIRTIO_SHM_ALLOC
+#include "virtio_shm_alloc.h"
+#endif
 
 #define DT_DRV_COMPAT virtio_net
 LOG_MODULE_REGISTER(virtio_net, CONFIG_ETHERNET_LOG_LEVEL);
@@ -111,8 +114,13 @@ struct virtnet_data {
 	const struct _virtio_net_config *virtio_devcfg;
 	uint8_t mac[6];
 	struct _rx_cb_data rx_cb_data[CONFIG_ETH_VIRTIO_NET_RX_BUFFERS];
-	uint8_t txb[VIRTIO_NET_BUFLEN];
-	uint8_t rxb[CONFIG_ETH_VIRTIO_NET_RX_BUFFERS][VIRTIO_NET_BUFLEN];
+	#ifdef CONFIG_VIRTIO_SHM_ALLOC
+    	uint8_t *txb;
+    	uint8_t *rxb[CONFIG_ETH_VIRTIO_NET_RX_BUFFERS];
+	#else
+    	uint8_t rxb[CONFIG_ETH_VIRTIO_NET_RX_BUFFERS][VIRTIO_NET_BUFLEN];
+    	uint8_t txb[VIRTIO_NET_BUFLEN];
+	#endif
 };
 
 static uint16_t virtnet_enum_queues_cb(uint16_t q_index, uint16_t q_size_max, void *)
@@ -167,7 +175,11 @@ void virtnet_rx_cb(void *priv, uint32_t len)
 
 	if (pkt == NULL) {
 		LOG_ERR("received packet, but could not pass it to the operating system");
-	} else if (net_pkt_write(pkt, &(data->rxb[buf_no][sizeof(struct _virtio_net_hdr)]), len)) {
+	#ifdef CONFIG_VIRTIO_SHM_ALLOC
+		} else if (net_pkt_write(pkt, data->rxb[buf_no] + sizeof(struct _virtio_net_hdr), len)) {
+	#else
+		} else if (net_pkt_write(pkt, &(data->rxb[buf_no][sizeof(struct _virtio_net_hdr)]), len)) {
+	#endif
 		LOG_ERR("could not copy entire received packet");
 		net_pkt_unref(pkt);
 	} else if (net_recv_data(data->iface, pkt)) {
@@ -176,7 +188,11 @@ void virtnet_rx_cb(void *priv, uint32_t len)
 	} else {
 		/* Packet received correctly, no error */
 	}
-	struct virtq_buf vqbuf[] = {{.addr = &(data->rxb[buf_no]), .len = VIRTIO_NET_BUFLEN}};
+	#ifdef CONFIG_VIRTIO_SHM_ALLOC
+    	struct virtq_buf vqbuf[] = {{.addr = data->rxb[buf_no], .len = VIRTIO_NET_BUFLEN}};
+	#else
+		struct virtq_buf vqbuf[] = {{.addr = &(data->rxb[buf_no]), .len = VIRTIO_NET_BUFLEN}};
+	#endif
 
 	virtq_add_buffer_chain(vq, vqbuf, 1, 0, virtnet_rx_cb, priv, K_FOREVER);
 	virtio_notify_virtqueue(config->vdev, VIRTQ_RX(1));
@@ -184,8 +200,14 @@ void virtnet_rx_cb(void *priv, uint32_t len)
 
 static void virtnet_if_init(struct net_if *iface)
 {
-	ethernet_init(iface);
 	const struct device *dev = net_if_get_device(iface);
+
+	if (dev == NULL || !device_is_ready(dev)) {
+		printk("virtnet_if_init: parent virtio device not ready\n");
+		return;
+	}
+
+	ethernet_init(iface);
 	struct virtnet_data *data = dev->data;
 	const struct virtnet_config *config = dev->config;
 
@@ -201,7 +223,11 @@ static void virtnet_if_init(struct net_if *iface)
 		data->rx_cb_data[i].data = data;
 		data->rx_cb_data[i].buf_no = i;
 
-		struct virtq_buf vqbuf[] = {{.addr = &(data->rxb[i]), .len = VIRTIO_NET_BUFLEN}};
+		#ifdef CONFIG_VIRTIO_SHM_ALLOC
+			struct virtq_buf vqbuf[] = {{.addr = data->rxb[i], .len = VIRTIO_NET_BUFLEN}};
+		#else
+			struct virtq_buf vqbuf[] = {{.addr = &(data->rxb[i]), .len = VIRTIO_NET_BUFLEN}};
+		#endif
 
 		virtq_add_buffer_chain(vq, vqbuf, 1, 0, virtnet_rx_cb, &(data->rx_cb_data[i]),
 				       K_FOREVER);
@@ -214,6 +240,11 @@ static int virtnet_dev_init(const struct device *dev)
 {
 	const struct virtnet_config *config = dev->config;
 	struct virtnet_data *data = dev->data;
+
+	if (!device_is_ready(config->vdev)) {
+		printk("virtnet_dev_init: parent virtio device not ready\n");
+		return -ENODEV;
+	}
 
 	if (config->random_mac) {
 		sys_rand_get(data->mac, sizeof(data->mac));
@@ -236,6 +267,22 @@ static int virtnet_dev_init(const struct device *dev)
 	virtio_init_virtqueues(config->vdev, 2, virtnet_enum_queues_cb, NULL);
 	virtio_finalize_init(config->vdev);
 
+	/* Allocate TX buffer in shared memory */
+	#ifdef CONFIG_VIRTIO_SHM_ALLOC
+		data->txb = virtio_shm_alloc(VIRTIO_NET_BUFLEN, 64);
+		if (!data->txb) {
+			printk("virtnet: failed to alloc txb\n");
+			return -ENOMEM;
+		}
+
+		for (int i = 0; i < CONFIG_ETH_VIRTIO_NET_RX_BUFFERS; i++) {
+			data->rxb[i] = virtio_shm_alloc(VIRTIO_NET_BUFLEN, 64);
+			if (!data->rxb[i]) {
+				printk("virtnet: failed to alloc rxb[%d]\n", i);
+				return -ENOMEM;
+			}
+		}
+	#endif
 	return 0;
 }
 
